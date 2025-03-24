@@ -12,7 +12,7 @@ include 'layouts/sidebar.php';
 ?>
 
 <main>
-    <h1>Welcom to Shop </h1>
+    <h1>Welcom to Shop</h1>
 </main>
 <?php  include 'layouts/footer.php'?>
 </body>
