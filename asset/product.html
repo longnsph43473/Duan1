@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+  <title>Ease - Tất Cả Sản Phẩm</title>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <nav>
+      <ul>
+        <li><a href="index.html">Trang Chủ</a></li>
+        <li><a href="news.html">Tin Tức</a></li>
+        <li><a href="contact.html">Liên Hệ</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Bộ Lọc Sản Phẩm -->
+  <section class="product-filter">
+    <h1>Tất Cả Sản Phẩm</h1>
+    <label for="category">Danh Mục:</label>
+    <select id="category">
+      <option value="all">Tất Cả</option>
+      <option value="dress">Váy</option>
+      <option value="shirt">Áo</option>
+      <option value="pants">Quần</option>
+    </select>
+  </section>
+
+  <!-- Danh Sách Sản Phẩm -->
+  <section class="product-list">
+    <div class="product-card" onclick="window.location.href='product-detail.html'">
+      <img src="dress1.jpg" alt="Váy Dạ Hội Đỏ" />
+      <h2>Váy Dạ Hội Đỏ</h2>
+      <p>Giá: 1.200.000 VND</p>
+    </div>
+
+    <div class="product-card" onclick="window.location.href='product-detail.html'">
+      <img src="dress2.jpg" alt="Váy Công Chúa Trắng" />
+      <h2>Váy Công Chúa Trắng</h2>
+      <p>Giá: 1.500.000 VND</p>
+    </div>
+
+    <div class="product-card" onclick="window.location.href='product-detail.html'">
+      <img src="dress3.jpg" alt="Váy Xòe Vintage" />
+      <h2>Váy Xòe Vintage</h2>
+      <p>Giá: 950.000 VND</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Ease. All Rights Reserved.</p>
+  </footer>
+</body>
+</html>
