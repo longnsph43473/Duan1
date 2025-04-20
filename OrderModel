@@ -1,1 +1,164 @@
+<?php
+// model for momo payments
+class MoMoPayment
+{
+    private $endpoint;
+    private $partnerCode;
+    private $accessKey;
+    private $secretKey;
+    private $redirectUrl;
+    private $ipnUrl;
 
+    public function __construct()
+    {
+        $config = include(__DIR__ . '/../config/momo_config.php');
+        
+        $this->endpoint = $config['endpoint'];
+        $this->partnerCode = $config['partnerCode'];
+        $this->accessKey = $config['accessKey'];
+        $this->secretKey = $config['secretKey'];
+        $this->redirectUrl = $config['redirectUrl'];
+        $this->ipnUrl = $config['ipnUrl'];
+    }
+
+    public function createPayment($amount, $orderInfo = '')
+    {
+        $orderId = uniqid("order_"); // Using uniqid() for a unique orderId
+        $requestId = time() . '';
+        $orderInfo = $orderInfo ?: "Thanh toán đơn hàng #" . $orderId;
+        $extraData = '{}'; // Assign a valid JSON or string to extraData
+        $requestType = 'captureWallet'; // Ensure this is the correct request type
+
+        // Ensure IPN URL is provided
+        if (empty($this->ipnUrl)) {
+            throw new Exception("IPN URL must not be blank.");
+        }
+
+        // Chuỗi tạo chữ ký
+        $rawHash = "accessKey={$this->accessKey}&amount={$amount}&extraData={$extraData}&ipnUrl={$this->ipnUrl}"
+            . "&orderId={$orderId}&orderInfo={$orderInfo}&partnerCode={$this->partnerCode}"
+            . "&redirectUrl={$this->redirectUrl}&requestId={$requestId}&requestType={$requestType}";
+
+        $signature = hash_hmac('sha256', $rawHash, $this->secretKey);
+
+        $data = [
+            'partnerCode' => $this->partnerCode,
+            'accessKey' => $this->accessKey,
+            'requestId' => $requestId,
+            'amount' => $amount,
+            'orderId' => $orderId,
+            'orderInfo' => $orderInfo,
+            'redirectUrl' => $this->redirectUrl,
+            'ipnUrl' => $this->ipnUrl,
+            'extraData' => $extraData,
+            'requestType' => $requestType,
+            'signature' => $signature,
+            'lang' => 'vi'
+        ];
+
+        // Gửi request đến MoMo
+        $ch = curl_init($this->endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        $result = curl_exec($ch);
+        curl_close($ch);
+
+        return json_decode($result, true);
+    }
+
+}
+// ORDER
+    public function get_order_by_user_id($id)
+    {
+        $sql = "SELECT
+                        od.quantity,
+                        od.price,
+                        o.id as order_id,
+                        o.status, 
+                        o.created_at,
+                        o.receiver_name,
+                        o.receiver_phone,
+                        o.receiver_address,
+                        o.receiver_note,
+                        s.size_name,
+                        cl.color_name,
+                        cl.color_code,
+                        p.name,
+                        MIN(i.image_url) AS first_image
+                    FROM orders o
+                    JOIN order_details od ON od.order_id = o.id
+                    JOIN product_detail pd ON od.product_detail_id = pd.id
+                    JOIN sizes s ON pd.size_id = s.id
+                    JOIN colors cl ON pd.color_id = cl.id
+                    JOIN products p ON pd.product_id = p.id
+                    LEFT JOIN images i ON i.product_id = p.id
+                    WHERE o.user_id = :user_id
+                    GROUP BY od.quantity, od.price, o.id, o.status, o.created_at, o.receiver_name, o.receiver_phone, o.receiver_address, o.receiver_note, s.size_name, cl.color_name, cl.color_code, p.name";
+        $data = $this->conn->prepare($sql);
+        $data->bindParam(":user_id", $id);
+        $data->execute();
+        return $data->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function add_orders($order, $order_details_list)
+    {
+        // Insert vào bảng orders
+        $sql = "INSERT INTO orders (user_id, payment_method, receiver_name, receiver_phone, receiver_address, receiver_note) 
+                    VALUES (:user_id, :payment_method, :receiver_name, :receiver_phone, :receiver_address, :receiver_note)";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($order);
+
+        $orderId = $this->conn->lastInsertId();
+
+        // Insert từng sản phẩm vào order_details
+        $sql_detail = "INSERT INTO order_details (order_id, product_detail_id, quantity, price) 
+                           VALUES (:order_id, :product_detail_id, :quantity, :price)";
+        $stmt_detail = $this->conn->prepare($sql_detail);
+
+        foreach ($order_details_list as $detail) {
+            $stmt_detail->execute([
+                ":order_id" => $orderId,
+                ":product_detail_id" => $detail["product_detail_id"],
+                ":quantity" => $detail["quantity"],
+                ":price" => $detail["price"]
+            ]);
+        }
+    }
+    public function decrease_product_stock($product_detail_id, $quantity)
+    {
+        $stmt = $this->conn->prepare("UPDATE product_detail SET stock = stock - ? WHERE id = ?");
+        $stmt->execute([$quantity, $product_detail_id]);
+    }
+
+    public function get_status_order_by_id($order_id)
+    {
+        $sql = "SELECT status FROM orders WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id', $order_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ? $result['status'] : null;
+    }
+    public function cancelled_order($order_id)
+    {
+        $sql = "UPDATE `orders` SET status = :status WHERE id = :id";
+        $stmt = $this->conn->prepare($sql);
+
+        $status = "Cancelled";
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':id', $order_id, PDO::PARAM_INT);
+
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
+    }
+    public function delete_order($order_id)
+    {
+        $sql = "DELETE FROM `orders` where id = :id";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id', $order_id, PDO::PARAM_INT);
+
+        $stmt->execute();
+        return $stmt->rowCount() > 0;
+    }
