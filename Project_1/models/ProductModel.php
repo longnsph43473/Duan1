@@ -40,4 +40,6 @@ public function search_products($keyword)
         return $data->fetchAll(PDO::FETCH_ASSOC);
     }
 
+   
+
 }

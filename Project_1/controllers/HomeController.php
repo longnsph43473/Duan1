@@ -34,7 +34,10 @@ class HomeController
             echo "User not found";
         }
     }
-
+    public function product_view(){
+        $category = $this->productModel->get_table("categories");
+        require_once './views/Category.php';
+    }
 
     public function updateUserProfile()
     {
