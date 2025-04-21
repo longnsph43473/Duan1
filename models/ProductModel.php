@@ -1,82 +1,89 @@
 <?php
-class ProductModel extends Connect
+class Connect
 {
-
-    public function search_products($keyword){
-        $sql = "SELECT
-                        p.id,
-                        p.name,
-                        p.description,
-                        p.price,
-                        MIN(i.image_url) AS first_imgae
-                    FROM products AS p
-                    LEFT JOIN images AS i ON p.id = i.product_id
-                    WHERE p.name LIKE :keyword OR p.description LIKE :keyword
-                    GROUP BY p.id";
-                    $data = $this->conn->prepare($sql);
-                    $data->bindValue(':keyword', '%'. $keyword . '%', PDO::PARAM_STR);
-                    $data->execute();
-                    return $data->fetchAll(PDO::FETCH_ASSOC);
-    }
-    public function get_product()
+    public $conn;
+    public function __construct()
     {
-        $sql = "SELECT 
-                        p.id, 
-                        p.name, 
-                        p.description, 
-                        p.price, 
-                        p.quantity, 
-                        c.category_name,
-                        MIN(i.image_url) AS first_image
-                    FROM products AS p
-                    JOIN categories AS c ON c.id = p.category_id
-                    LEFT JOIN images AS i ON p.id = i.product_id
-                    GROUP BY p.id, c.category_name";
+        $this->conn = connect_db();
+    }
+    public function __destruct()
+    {
+        $this->conn = null;
+    }
+    public function get_table($table_name, $conditions = [], $columns = "*", $limit = null)
+    {
+        $sql = "SELECT $columns FROM $table_name";
+        $params = [];
+
+        if (!empty($conditions)) {
+            $sql .= " WHERE ";
+            $whereClauses = [];
+
+            foreach ($conditions as $column => $value) {
+                $whereClauses[] = "$column = :$column";
+                $params[":$column"] = $value;
+            }
+
+            $sql .= implode(" AND ", $whereClauses);
+        }
+
+        if ($limit) {
+            $sql .= " LIMIT :limit";
+        }
+
         $data = $this->conn->prepare($sql);
+
+        foreach ($params as $param => $value) {
+            $data->bindValue($param, $value);
+        }
+
+        if ($limit) {
+            $data->bindValue(":limit", $limit, PDO::PARAM_INT);
+        }
+
         $data->execute();
         return $data->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function get_product_detail($product_id)
-    {
-        $sql = "SELECT 
-                        pd.id AS product_detail_id,
-                        pd.product_id,
-                        pd.stock,
-                        c.color_name,
-                        c.color_code,
-                        s.size_name,
-                        p.name,
-                        p.description,
-                        p.price,
-                        (SELECT i.image_url 
-                        FROM images i 
-                        WHERE i.product_id = p.id 
-                        ORDER BY i.id ASC 
-                        LIMIT 1) AS first_image
-                    FROM product_detail pd
-                    JOIN colors c ON pd.color_id = c.id
-                    JOIN sizes s ON pd.size_id = s.id
-                    JOIN products p ON pd.product_id = p.id
-                    WHERE pd.product_id = :product_id";
-        $data = $this->conn->prepare($sql);
-        $data->bindParam(":product_id", $product_id);
-        $data->execute();
-        return $data->fetchAll(PDO::FETCH_ASSOC);
-    }
-    public function get_quantity_product_cart($user_id)
-    {
-        $sql = "
-            SELECT COUNT(*) AS total_products
-            FROM cart c
-            JOIN cart_details cd ON c.id = cd.cart_id
-            WHERE c.user_id = :user_id
-        ";
-        $data = $this->conn->prepare($sql);
-        $data->bindParam(":user_id", $user_id);
-        $data->execute();
-        return $data->fetch(PDO::FETCH_ASSOC)['total_products'] ?? 0;
-    }
-    
+}
 
+class ProductModel {
+
+    private function get_db_connection() {
+        return connect_db(); 
+    }
+
+
+    public function get_product() {
+        $conn = $this->get_db_connection();  
+        $stmt = $conn->prepare("SELECT * FROM products");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy chi tiết sản phẩm theo ID
+    public function get_product_detail($product_id) {
+        $conn = $this->get_db_connection();  // Lấy kết nối
+        $stmt = $conn->prepare("SELECT * FROM products WHERE id = :id");
+        $stmt->bindParam(':id', $product_id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy danh mục sản phẩm
+    public function get_table($table) {
+        $conn = $this->get_db_connection();  // Lấy kết nối
+        $stmt = $conn->prepare("SELECT * FROM $table");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy số lượng sản phẩm trong giỏ hàng
+    public function get_quantity_product_cart($user_id) {
+        $conn = $this->get_db_connection();
+        $stmt = $conn->prepare("SELECT SUM(quantity) AS total_quantity FROM cart_details WHERE user_id = :user_id");
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC)['total_quantity'];
+    }
 }
