@@ -1,0 +1,7 @@
+    public function get_user()
+    {
+        $sql = "SELECT * FROM users";
+        $data = $this->conn->prepare($sql);
+        $data->execute();
+        return $data->fetchAll(PDO::FETCH_ASSOC);
+    }
