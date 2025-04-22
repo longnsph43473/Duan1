@@ -267,7 +267,7 @@
         <li><a href="#">Nam</a></li>
         <li><a href="#">Nữ</a></li>
         <li><a href="news.html">Tin Tức</a></li>
-        <li><a href="contact.html">Liên Hệ</a></li>
+        <li><a href="<?php echo BASE_URL . "?act=submit_contact" ?>">Liên Hệ</a></li>
       </ul>
     </nav>
     <div class="header-icons">

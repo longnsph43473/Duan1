@@ -11,6 +11,21 @@ class UserModel
       $this->conn = connect_db();
    }
 
+   public function submit_contact()
+{
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $name = htmlspecialchars($_POST['name'], ENT_QUOTES, 'UTF-8');
+        $email = htmlspecialchars($_POST['email'], ENT_QUOTES, 'UTF-8');
+        $message = htmlspecialchars($_POST['message'], ENT_QUOTES, 'UTF-8');
+
+       
+
+        echo "<script>alert('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất.'); window.location.href = '" . BASE_URL . "';</script>";
+    }else{
+        require_once './views/User/Contact.php';
+    }
+}
+
    public function getUserById($id)
    {
       $sql = "SELECT * FROM users WHERE id = :id";
